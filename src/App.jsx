@@ -2,14 +2,31 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import EditorPanel from './components/EditorPanel/EditorPanel'
 import PreviewPanel from './components/PreviewPanel/PreviewPanel'
 import { useRoadmapData } from './hooks/useRoadmapData'
+import { getShareDataFromUrl } from './utils/shareUrl'
 
 function App() {
   const roadmapData = useRoadmapData()
+  const [shareData, setShareData] = useState(() => getShareDataFromUrl())
+  const isShareView = !!shareData
   const [showEditor, setShowEditor] = useState(true)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const [leftWidth, setLeftWidth] = useState(50) // 左侧面板宽度百分比
   const [isDragging, setIsDragging] = useState(false)
   const containerRef = useRef(null)
+
+  // 监听 URL hash 变化（分享链接进入/退出）
+  useEffect(() => {
+    const checkShare = () => setShareData(getShareDataFromUrl())
+    window.addEventListener('hashchange', checkShare)
+    return () => window.removeEventListener('hashchange', checkShare)
+  }, [])
+
+  const handleOpenInEditor = useCallback(() => {
+    if (!shareData) return
+    roadmapData.importData(shareData)
+    setShareData(null)
+    window.history.replaceState(null, '', window.location.pathname + window.location.search)
+  }, [shareData, roadmapData])
 
   // 监听窗口大小变化
   useEffect(() => {
@@ -70,6 +87,32 @@ function App() {
       document.body.style.userSelect = ''
     }
   }, [isDragging, handleMouseMove, handleMouseUp])
+
+  // 分享模式：仅展示只读预览，不展示编辑器
+  if (isShareView) {
+    const readOnlyRoadmap = { data: shareData }
+    return (
+      <div className="flex flex-col h-screen overflow-hidden bg-slate-50">
+        <div className="flex-shrink-0 px-4 py-2 bg-slate-200 border-b border-slate-300 flex items-center justify-between gap-3">
+          <span className="text-slate-600 text-sm">
+            <i className="fa-solid fa-eye mr-2"></i>
+            正在查看分享的路线图
+          </span>
+          <button
+            type="button"
+            onClick={handleOpenInEditor}
+            className="px-3 py-1.5 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+          >
+            <i className="fa-solid fa-edit mr-2"></i>
+            在编辑器中打开
+          </button>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <PreviewPanel roadmapData={readOnlyRoadmap} />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div 

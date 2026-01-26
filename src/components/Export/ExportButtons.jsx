@@ -1,8 +1,21 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { exportToHTML, exportToJPG, exportToJSON, importFromJSON } from '../../utils/exportHelpers'
+import { buildShareUrl } from '../../utils/shareUrl'
 
 const ExportButtons = ({ roadmapData }) => {
   const fileInputRef = useRef(null)
+  const [shareHint, setShareHint] = useState(false)
+
+  const handleCopyShareLink = async () => {
+    try {
+      const url = buildShareUrl(roadmapData.data)
+      await navigator.clipboard.writeText(url)
+      setShareHint(true)
+      setTimeout(() => setShareHint(false), 2000)
+    } catch (e) {
+      alert('复制失败：' + (e.message || '请手动复制链接'))
+    }
+  }
 
   const handleImport = async (e) => {
     const file = e.target.files[0]
@@ -23,6 +36,17 @@ const ExportButtons = ({ roadmapData }) => {
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
+        <button
+          onClick={handleCopyShareLink}
+          className={`flex-1 px-3 py-2 rounded text-sm flex items-center justify-center gap-2 ${
+            shareHint
+              ? 'bg-emerald-600 text-white'
+              : 'bg-slate-500 text-white hover:bg-slate-600'
+          }`}
+        >
+          <i className="fa-solid fa-share-nodes"></i>
+          {shareHint ? '已复制到剪贴板' : '复制分享链接'}
+        </button>
         <button
           onClick={() => exportToHTML(roadmapData)}
           className="flex-1 px-3 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600 flex items-center justify-center gap-2"
