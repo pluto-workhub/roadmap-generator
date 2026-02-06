@@ -1,25 +1,31 @@
+import LZString from 'lz-string'
 import { validateRoadmapData } from './dataSchema'
 
 const SHARE_HASH_PREFIX = '#share='
 
 /**
- * 将路线图数据编码为可放在 URL 中的字符串（Base64）
+ * 将路线图数据编码为可放在 URL 中的字符串（LZ 压缩 + URL 安全编码，比纯 Base64 短很多）
  */
 export function encodeShareData(data) {
   if (!validateRoadmapData(data)) {
     throw new Error('无效的路线图数据')
   }
   const json = JSON.stringify(data)
-  return btoa(encodeURIComponent(json))
+  return LZString.compressToEncodedURIComponent(json)
 }
 
 /**
- * 从编码字符串解析回路线图数据
+ * 从编码字符串解析回路线图数据（兼容旧的 Base64 未压缩链接）
  */
 export function decodeShareData(encoded) {
   if (!encoded || typeof encoded !== 'string') return null
   try {
-    const json = decodeURIComponent(atob(encoded))
+    // 优先尝试 LZ 压缩格式（新链接）
+    let json = LZString.decompressFromEncodedURIComponent(encoded)
+    if (json == null) {
+      // 兼容旧链接：纯 Base64
+      json = decodeURIComponent(atob(encoded))
+    }
     const data = JSON.parse(json)
     return validateRoadmapData(data) ? data : null
   } catch {
